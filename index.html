@@ -8,15 +8,21 @@
     <!-- create vertex shader -->
     <!-- attributeをつけた変数に、WebGL側であらかじめ仕込まれたデータが渡される -->
     <!-- uniform修飾子をつけた変数は、すべての頂点に対して一律にに処理される情報をを渡す -->
+    <!-- position*MVP * (MVP)^(-1)*lightDirectionにより、回転拡大平行移動の変換を無視してライティングを計算できる -->
     <script id="vertexShader" type="x-shader/x-vertex">
       attribute vec3 position;
+      attribute vec3 normal;
       attribute vec4 color;
       uniform mat4 mvpMatrix;
+      uniform mat4 invMatrix;
+      uniform vec3 lightDirection;
       varying vec4 vColor;
 
       void main(void){
-        vColor = color;
-        gl_Position = mvpMatrix * vec4(position, 1.0);
+        vec3  invLight = normalize(invMatrix * vec4(lightDirection, 0.0)).xyz;
+        float diffuse  = clamp(dot(normal, invLight), 0.1, 1.0);
+        vColor         = color * vec4(vec3(diffuse), 1.0);
+        gl_Position    = mvpMatrix * vec4(position, 1.0);
       }
     </script>
 

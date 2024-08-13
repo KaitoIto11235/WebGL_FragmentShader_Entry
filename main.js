@@ -28,51 +28,32 @@ document.addEventListener('DOMContentLoaded', function () {
     let attLocation = new Array(2);
     // attributeLocationの取得、positionが何番目のAttributeかを返す
     attLocation[0] = gl.getAttribLocation(prg, 'position');
-    attLocation[1] = gl.getAttribLocation(prg, 'color');
+    attLocation[1] = gl.getAttribLocation(prg, 'normal');
+    attLocation[2] = gl.getAttribLocation(prg, 'color');
     
     
     let attStride = new Array(2);
     // attribute1の要素数(この場合は xyz の3要素)
     attStride[0] = 3;
-    attStride[1] = 4;
+    attStride[1] = 3;
+    attStride[2] = 4;
     
-    /*
-    // モデル(頂点)データ
-    let vertex_position = [
-         0.0, 1.0, 0.0,
-         1.0, 0.0, 0.0,
-        -1.0, 0.0, 0.0,
-         0.0, -1.0, 0.0
-    ];
+    
 
-    // 頂点の色情報を格納する配列
-    let vertex_color = [
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        1.0, 1.0, 1.0, 1.0
-    ]
-    */
-
-    //const vertex = torus(20, 50, 0.2, 1.0);
-    const vertex = stripedShpere(1, 21, 20);
+    //const vertex = torus(32, 32, 1.0, 5.0);
+    const vertex = stripedShpere(5, 21, 20);
 
     const vertex_position = vertex[0];
-    const vertex_color = vertex[1];
-    const index = vertex[2];
+    const vertex_normal = vertex[1];
+    const vertex_color = vertex[2];
+    const index = vertex[3];
     // VBOの生成
     let position_vbo = create_vbo(vertex_position);
+    let normal_vbo = create_vbo(vertex_normal);
     let color_vbo = create_vbo(vertex_color);
 
     // VBOを登録
-    set_attribute([position_vbo, color_vbo], attLocation, attStride);
-    /*
-    // インデックスデータ配列
-    const index = [
-        0, 1, 2,
-        1, 3, 2
-    ];
-    */
+    set_attribute([position_vbo, normal_vbo, color_vbo], attLocation, attStride);
 
     // IBOの生成
     const ibo = create_ibo(index);
@@ -80,8 +61,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // IBOをバインドして登録する
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
 
+    let uniLocation = new Array();
     // uniformLocationの取得　prgオブジェクトにあるシェーダのuniform変数’mvpMatrix’がuniform変数の中で何番目のものかを取得
-    let uniLocation = gl.getUniformLocation(prg, 'mvpMatrix');
+    uniLocation[0] = gl.getUniformLocation(prg, 'mvpMatrix');
+    uniLocation[1] = gl.getUniformLocation(prg, 'invMatrix');
+    uniLocation[2] = gl.getUniformLocation(prg, 'lightDirection');
 
     // minMatrix.js を用いた行列関連処理
     // matIVオブジェクトを生成
@@ -93,13 +77,17 @@ document.addEventListener('DOMContentLoaded', function () {
     let pMatrix = m.identity(m.create());
     let tmpMatrix = m.identity(m.create());
     let mvpMatrix = m.identity(m.create());
+    let invMatrix = m.identity(m.create());
     
     // ビュー座標変換行列
-    m.lookAt([0.0, 0.0, 3.0], [0, 0, 0], [0, 1, 0], vMatrix);
+    m.lookAt([0.0, 0.0, 20.0], [0, 0, 0], [0, 1, 0], vMatrix);
     // プロジェクション座標変換行列
     m.perspective(90, canvas.width / canvas.height, 0.1, 100, pMatrix);
     // ビュー×プロジェクション座標変換行列を完成させる
     m.multiply(pMatrix, vMatrix, tmpMatrix);
+
+    // 平行光源の向き
+    const lightDirection = [-0.5, 0.5, 0.5];
 
     // カリングを有効に
     gl.enable(gl.CULL_FACE);
@@ -115,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // 恒常ループ
     (function(){
         // canvasを初期化
-        gl.clearColor(0.0, 0.0, 0.0, 0.5);
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -125,25 +113,36 @@ document.addEventListener('DOMContentLoaded', function () {
         const rad2 = ((count + 90) % 360) * Math.PI / 180;
 
         m.identity(mMatrix);
-        m.translate(mMatrix, [0.5, 0.0, 0.0], mMatrix);
+        m.translate(mMatrix, [2.0, 0.0, 0.0], mMatrix);
         m.rotate(mMatrix, rad1, [0.5, 0.5, 0], mMatrix);
+
+        // モデル座標変換行列から逆行列を生成
+        m.inverse(mMatrix, invMatrix);
 
         // モデル1の座標変換行列を完成させレンダリングする
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
         // フラグメントシェーダのuniformLovationへ座標変換行列を登録する（一つ目のモデル）
-        gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
+        gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
+        gl.uniformMatrix4fv(uniLocation[1], false, invMatrix);
+        gl.uniform3fv(uniLocation[2], lightDirection);
         gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
         
         // モデル2はY軸を中心に回転する
         m.identity(mMatrix);
-        m.translate(mMatrix, [-0.5, 0.0, 0.0], mMatrix);
+        m.translate(mMatrix, [-2.0, 0.0, 0.0], mMatrix);
         m.rotate(mMatrix, rad2, [0, 0.5, 0.5], mMatrix);
+
+        // モデル座標変換行列から逆行列を生成
+        m.inverse(mMatrix, invMatrix);
 
         // モデル2の座標変換行列を完成させレンダリングする
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
+        gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
+        gl.uniformMatrix4fv(uniLocation[1], false, invMatrix);
+        gl.uniform3fv(uniLocation[2], lightDirection);
         gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
-        
+
+
         // コンテキストの再描画
         gl.flush();
         
@@ -280,22 +279,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // トーラスのモデルデータを生成する関数
     function torus(row, column, irad, orad){
-        let pos = new Array(), col = new Array(), idx = new Array();
+        let pos = new Array();
+        let nor = new Array();
+        let col = new Array(); 
+        let idx = new Array();
         for(let i = 0; i <= row; i++)
         {
             // 輪を作る
-            let r = 2 * Math.PI  * i / row; // 半径1の円のラジアン
-            let rr = Math.cos(r);           // x座標
-            let ry = Math.sin(r);           // y座標
+            const r = 2 * Math.PI  * i / row; // 半径1の円のラジアン
+            const rr = Math.cos(r);           // x座標
+            const ry = Math.sin(r);           // y座標
             for(let ii = 0; ii <= column; ii++)
             {
                 // 管を作る
-                let tr = 2 * Math.PI * ii / column;
-                let tx = (rr * irad + orad) * Math.cos(tr);
-                let ty = ry * irad;
-                let tz = (rr * irad + orad) * Math.sin(tr);
+                const tr = 2 * Math.PI * ii / column;
+                const tx = (rr * irad + orad) * Math.cos(tr);
+                const ty = ry * irad;
+                const tz = (rr * irad + orad) * Math.sin(tr);
+                const rx = rr * Math.cos(tr);       // 頂点Aの法線は、トーラスを頂点Aを含むよう輪切りし、
+                const rz = rr * Math.sin(tr);       // その中心を原点とした時の、頂点Aの座標に一致するからこの計算で良い。
                 pos.push(tx, ty, tz);
-                let tc = hsva(360 / column * ii, 1, 1, 1);
+                nor.push(rx, ry, rz);
+                const tc = hsva(360 / column * ii, 1, 1, 1);
                 col.push(tc[0], tc[1], tc[2], tc[3]); 
             }
         }
@@ -308,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 idx.push(r + column + 1, r + column + 2, r + 1);
             }
         }
-        return [pos, col, idx];
+        return [pos, nor, col, idx];
     }
 
     function hsva(h, s, v, a){
@@ -334,7 +339,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // 縞模様の球体を自作
     function stripedShpere(radius, frequency, roundness)
     {
-        let pos = new Array(), col = new Array(), idx = new Array();
+        const pos = new Array();
+        const nor = new Array();
+        const col = new Array();
+        const idx = new Array();
         for(let i = 1; i < frequency; i++)
         {
             const y_ratio = parseFloat(i) / frequency;  // 0<y_ration<1をとるy座標
@@ -347,6 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const ty = y - radius;
                 const tz = y_radius * Math.sin(circle);
                 pos.push(tx, ty, tz);
+                nor.push(tx, ty, tz);  // このモデルは球だから、法線はこれで良い
                 const tc = hsva(360 / roundness * ii, 1, 1, 1);
                 col.push(tc[0], tc[1], tc[2], tc[3]);
             }
@@ -361,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 idx.push(r, r + roundness + 2, r + 1);    
             }
         }
-        return [pos, col, idx];
+        return [pos, nor, col, idx];
 
     }
 });
