@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebGL入門</title>
+    <script src="./main.js"></script> <!-- main.jsを読み込む -->
+    <script src="./minMatrix.js"></script>
+
+    <!-- create vertex shader -->
+    <!-- attributeをつけた変数に、WebGL側であらかじめ仕込まれたデータが渡される -->
+    <!-- uniform修飾子をつけた変数は、すべての頂点に対して一律にに処理される情報をを渡す -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+      attribute vec3 position;
+      attribute vec4 color;
+      uniform mat4 mvpMatrix;
+      varying vec4 vColor;
+
+      void main(void){
+        vColor = color;
+        gl_Position = mvpMatrix * vec4(position, 1.0);
+      }
+    </script>
+
+    <!-- create fragment shader -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+      precision mediump float;
+      varying vec4 vColor;
+
+      void main(void){
+        gl_FragColor = vColor;
+      }
+    </script>
+  </head>
+
+  <body>
+    <!-- bodyタグの中にCanvasを配置する -->
+    <canvas id="canvas"></canvas>
+  </body>
+</html>
