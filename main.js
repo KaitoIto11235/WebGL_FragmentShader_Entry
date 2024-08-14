@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
     // canvasを初期化する色を設定する
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.clearColor(0.0, 0.0, 0.0, 0.0);
     // canvasを初期化する際の深度を設定する
     gl.clearDepth(1.0);
     // canvasを初期化する
@@ -39,14 +39,14 @@ document.addEventListener('DOMContentLoaded', function () {
     attStride[2] = 4;
     
     
+    const vertex = torus(32, 32, 1.0, 5.0);
+    //const vertex = stripedShpere(2, 51, 20);
+    
 
-    //const vertex = torus(32, 32, 1.0, 5.0);
-    const vertex = stripedShpere(5, 21, 20);
-
-    const vertex_position = vertex[0];
-    const vertex_normal = vertex[1];
-    const vertex_color = vertex[2];
-    const index = vertex[3];
+    const vertex_position = vertex.position;
+    const vertex_normal = vertex.normal;
+    const vertex_color = vertex.color;
+    const index = vertex.index;
     // VBOの生成
     let position_vbo = create_vbo(vertex_position);
     let normal_vbo = create_vbo(vertex_normal);
@@ -66,6 +66,8 @@ document.addEventListener('DOMContentLoaded', function () {
     uniLocation[0] = gl.getUniformLocation(prg, 'mvpMatrix');
     uniLocation[1] = gl.getUniformLocation(prg, 'invMatrix');
     uniLocation[2] = gl.getUniformLocation(prg, 'lightDirection');
+    uniLocation[3] = gl.getUniformLocation(prg, 'eyeDirection');
+    uniLocation[4] = gl.getUniformLocation(prg, 'ambientColor');
 
     // minMatrix.js を用いた行列関連処理
     // matIVオブジェクトを生成
@@ -88,6 +90,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 平行光源の向き
     const lightDirection = [-0.5, 0.5, 0.5];
+    // 視線ベクトル
+    const eyeDirection = [0.0, 0.0, 20.0];
+    // 乱反射によって空間全てを少しだけ照らす環境光
+    const ambientColor = [0.1, 0.1, 0.1, 0.1];
 
     // カリングを有効に
     gl.enable(gl.CULL_FACE);
@@ -125,6 +131,8 @@ document.addEventListener('DOMContentLoaded', function () {
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
         gl.uniformMatrix4fv(uniLocation[1], false, invMatrix);
         gl.uniform3fv(uniLocation[2], lightDirection);
+        gl.uniform3fv(uniLocation[3], eyeDirection);
+        gl.uniform4fv(uniLocation[4], ambientColor);
         gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
         
         // モデル2はY軸を中心に回転する
@@ -137,9 +145,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // モデル2の座標変換行列を完成させレンダリングする
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
+
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
         gl.uniformMatrix4fv(uniLocation[1], false, invMatrix);
         gl.uniform3fv(uniLocation[2], lightDirection);
+        gl.uniform3fv(uniLocation[3], eyeDirection);
+        gl.uniform4fv(uniLocation[4], ambientColor);
         gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
 
 
@@ -278,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // トーラスのモデルデータを生成する関数
-    function torus(row, column, irad, orad){
+    function torus(row, column, irad, orad, color){
         let pos = new Array();
         let nor = new Array();
         let col = new Array(); 
@@ -298,9 +309,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 const tz = (rr * irad + orad) * Math.sin(tr);
                 const rx = rr * Math.cos(tr);       // 頂点Aの法線は、トーラスを頂点Aを含むよう輪切りし、
                 const rz = rr * Math.sin(tr);       // その中心を原点とした時の、頂点Aの座標に一致するからこの計算で良い。
+                if(color)
+                {
+                    const tc = color;
+                }
+                else
+                {
+                    tc = hsva(360 / column * ii, 1, 1, 1);
+                }
                 pos.push(tx, ty, tz);
                 nor.push(rx, ry, rz);
-                const tc = hsva(360 / column * ii, 1, 1, 1);
                 col.push(tc[0], tc[1], tc[2], tc[3]); 
             }
         }
@@ -313,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 idx.push(r + column + 1, r + column + 2, r + 1);
             }
         }
-        return [pos, nor, col, idx];
+        return {position: pos, normal: nor, color: col, index: idx};
     }
 
     function hsva(h, s, v, a){
@@ -370,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 idx.push(r, r + roundness + 2, r + 1);    
             }
         }
-        return [pos, nor, col, idx];
+        return {position: pos, normal: nor, color: col, index: idx};
 
     }
 });
