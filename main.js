@@ -32,42 +32,43 @@ document.addEventListener('DOMContentLoaded', function () {
     attLocation[2] = gl.getAttribLocation(prg, 'color');
     
     
-    let attStride = new Array(2);
+    const attStride = new Array(2);
     // attribute1の要素数(この場合は xyz の3要素)
     attStride[0] = 3;
     attStride[1] = 3;
     attStride[2] = 4;
     
     
-    const vertex = torus(32, 32, 1.0, 5.0);
+    const torusData = torus(32, 32, 1.0, 5.0);
     //const vertex = stripedShpere(2, 51, 20);
+    const sphereData = sphere(64, 64, 2.0, [0.25, 0.25, 0.75, 1.0]);
+
+    // VBOの生成
+    const tPosition_vbo = create_vbo(torusData.position);
+    const tNormal_vbo = create_vbo(torusData.normal);
+    const tColor_vbo = create_vbo(torusData.color);
+    const tVBOList = [tPosition_vbo, tNormal_vbo, tColor_vbo];
+    // VBOの生成
+    const sPosition_vbo = create_vbo(sphereData.position);
+    const sNormal_vbo = create_vbo(sphereData.normal);
+    const sColor_vbo = create_vbo(sphereData.color);
+    const sVBOList = [sPosition_vbo, sNormal_vbo, sColor_vbo];
+
     
 
-    const vertex_position = vertex.position;
-    const vertex_normal = vertex.normal;
-    const vertex_color = vertex.color;
-    const index = vertex.index;
-    // VBOの生成
-    let position_vbo = create_vbo(vertex_position);
-    let normal_vbo = create_vbo(vertex_normal);
-    let color_vbo = create_vbo(vertex_color);
-
-    // VBOを登録
-    set_attribute([position_vbo, normal_vbo, color_vbo], attLocation, attStride);
-
     // IBOの生成
-    const ibo = create_ibo(index);
+    const tIBOIndex = create_ibo(torusData.index);
+    const sIBOIndex = create_ibo(sphereData.index);
 
-    // IBOをバインドして登録する
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
 
     let uniLocation = new Array();
     // uniformLocationの取得　prgオブジェクトにあるシェーダのuniform変数’mvpMatrix’がuniform変数の中で何番目のものかを取得
     uniLocation[0] = gl.getUniformLocation(prg, 'mvpMatrix');
-    uniLocation[1] = gl.getUniformLocation(prg, 'invMatrix');
-    uniLocation[2] = gl.getUniformLocation(prg, 'lightDirection');
-    uniLocation[3] = gl.getUniformLocation(prg, 'eyeDirection');
-    uniLocation[4] = gl.getUniformLocation(prg, 'ambientColor');
+    uniLocation[1] = gl.getUniformLocation(prg, 'mMatrix');
+    uniLocation[2] = gl.getUniformLocation(prg, 'invMatrix');
+    uniLocation[3] = gl.getUniformLocation(prg, 'lightPosition');
+    uniLocation[4] = gl.getUniformLocation(prg, 'eyeDirection');
+    uniLocation[5] = gl.getUniformLocation(prg, 'ambientColor');
 
     // minMatrix.js を用いた行列関連処理
     // matIVオブジェクトを生成
@@ -90,6 +91,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 平行光源の向き
     const lightDirection = [-0.5, 0.5, 0.5];
+    // 点光源の位置
+    const lightPosition = [0.0, 5.0, 5.0];
     // 視線ベクトル
     const eyeDirection = [0.0, 0.0, 20.0];
     // 乱反射によって空間全てを少しだけ照らす環境光
@@ -115,50 +118,56 @@ document.addEventListener('DOMContentLoaded', function () {
 
         count++;
 
-        const rad1 = (count % 360) * Math.PI / 180;
-        const rad2 = ((count + 90) % 360) * Math.PI / 180;
+        // カウンタを元にラジアンと各種座標を算出
+        const rad = (count % 360) * Math.PI / 180;
+        const tx = Math.cos(rad) * 3.5;
+        const ty = Math.sin(rad) * 3.5;
+        const tz = Math.sin(rad) * 3.5;
+
+        // トーラスのVBOとIBOをセット
+        set_attribute(tVBOList, attLocation, attStride);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tIBOIndex);
 
         m.identity(mMatrix);
-        m.translate(mMatrix, [2.0, 0.0, 0.0], mMatrix);
-        m.rotate(mMatrix, rad1, [0.5, 0.5, 0], mMatrix);
-
+        m.translate(mMatrix, [tx, -ty, -tz], mMatrix);
+        m.rotate(mMatrix, -rad, [0, 1, 1], mMatrix);
         // モデル座標変換行列から逆行列を生成
         m.inverse(mMatrix, invMatrix);
 
         // モデル1の座標変換行列を完成させレンダリングする
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
-        // フラグメントシェーダのuniformLovationへ座標変換行列を登録する（一つ目のモデル）
+        // フラグメントシェーダのuniformLocationへ座標変換行列を登録する（一つ目のモデル）
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation[1], false, invMatrix);
-        gl.uniform3fv(uniLocation[2], lightDirection);
-        gl.uniform3fv(uniLocation[3], eyeDirection);
-        gl.uniform4fv(uniLocation[4], ambientColor);
-        gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+        gl.uniformMatrix4fv(uniLocation[1], false, mMatrix);
+        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
+        gl.uniform3fv(uniLocation[3], lightPosition);
+        gl.uniform3fv(uniLocation[4], eyeDirection);
+        gl.uniform4fv(uniLocation[5], ambientColor);
+        gl.drawElements(gl.TRIANGLES, torusData.index.length, gl.UNSIGNED_SHORT, 0);
+
+        // トーラスのVBOとIBOをセット
+        set_attribute(sVBOList, attLocation, attStride);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sIBOIndex);
         
         // モデル2はY軸を中心に回転する
         m.identity(mMatrix);
-        m.translate(mMatrix, [-2.0, 0.0, 0.0], mMatrix);
-        m.rotate(mMatrix, rad2, [0, 0.5, 0.5], mMatrix);
-
+        m.translate(mMatrix, [-tx, ty, tz], mMatrix);
         // モデル座標変換行列から逆行列を生成
         m.inverse(mMatrix, invMatrix);
-
         // モデル2の座標変換行列を完成させレンダリングする
         m.multiply(tmpMatrix, mMatrix, mvpMatrix);
 
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation[1], false, invMatrix);
-        gl.uniform3fv(uniLocation[2], lightDirection);
-        gl.uniform3fv(uniLocation[3], eyeDirection);
-        gl.uniform4fv(uniLocation[4], ambientColor);
-        gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0);
+        gl.uniformMatrix4fv(uniLocation[1], false, mMatrix);
+        gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
+        gl.drawElements(gl.TRIANGLES, sphereData.index.length, gl.UNSIGNED_SHORT, 0);
 
 
         // コンテキストの再描画
         gl.flush();
         
         // ループのために再帰呼び出し
-        setTimeout(arguments.callee, 1000 / 50);
+        setTimeout(arguments.callee, 1000 / 100);
     })();
 
 
@@ -390,5 +399,41 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         return {position: pos, normal: nor, color: col, index: idx};
 
+    }
+
+    // 球体を生成する関数
+    function sphere(row, column, rad, color){
+        var pos = new Array(), nor = new Array(),
+            col = new Array(), idx = new Array();
+        for(var i = 0; i <= row; i++){
+            var r = Math.PI / row * i;
+            var ry = Math.cos(r);
+            var rr = Math.sin(r);
+            for(var ii = 0; ii <= column; ii++){
+                var tr = Math.PI * 2 / column * ii;
+                var tx = rr * rad * Math.cos(tr);
+                var ty = ry * rad;
+                var tz = rr * rad * Math.sin(tr);
+                var rx = rr * Math.cos(tr);
+                var rz = rr * Math.sin(tr);
+                if(color){
+                    var tc = color;
+                }else{
+                    tc = hsva(360 / row * i, 1, 1, 1);
+                }
+                pos.push(tx, ty, tz);
+                nor.push(rx, ry, rz);
+                col.push(tc[0], tc[1], tc[2], tc[3]);
+            }
+        }
+        r = 0;
+        for(i = 0; i < row; i++){
+            for(ii = 0; ii < column; ii++){
+                r = (column + 1) * i + ii;
+                idx.push(r, r + 1, r + column + 2);
+                idx.push(r, r + column + 2, r + column + 1);
+            }
+        }
+        return {position : pos, normal : nor, color : col, index : idx};
     }
 });
