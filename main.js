@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     
     const torusData = torus(32, 32, 1.0, 5.0);
-    //const vertex = stripedShpere(2, 51, 20);
+    //const stripedSphereData = stripedSphere(2, 51, 20);
     const sphereData = sphere(64, 64, 2.0, [0.25, 0.25, 0.75, 1.0]);
 
     // VBOの生成
@@ -66,9 +66,10 @@ document.addEventListener('DOMContentLoaded', function () {
     uniLocation[0] = gl.getUniformLocation(prg, 'mvpMatrix');
     uniLocation[1] = gl.getUniformLocation(prg, 'mMatrix');
     uniLocation[2] = gl.getUniformLocation(prg, 'invMatrix');
-    uniLocation[3] = gl.getUniformLocation(prg, 'lightPosition');
-    uniLocation[4] = gl.getUniformLocation(prg, 'eyeDirection');
-    uniLocation[5] = gl.getUniformLocation(prg, 'ambientColor');
+    uniLocation[3] = gl.getUniformLocation(prg, 'lightPosition1');
+    uniLocation[4] = gl.getUniformLocation(prg, 'lightPosition2');
+    uniLocation[5] = gl.getUniformLocation(prg, 'eyeDirection');
+    uniLocation[6] = gl.getUniformLocation(prg, 'ambientColor');
 
     // minMatrix.js を用いた行列関連処理
     // matIVオブジェクトを生成
@@ -92,7 +93,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // 平行光源の向き
     const lightDirection = [-0.5, 0.5, 0.5];
     // 点光源の位置
-    const lightPosition = [0.0, 5.0, 5.0];
+    const lightPosition1 = [5.0, 5.0, 2.0];
+    const lightPosition2 = [-8.0, 0.0, 9.0];
     // 視線ベクトル
     const eyeDirection = [0.0, 0.0, 20.0];
     // 乱反射によって空間全てを少しだけ照らす環境光
@@ -140,9 +142,10 @@ document.addEventListener('DOMContentLoaded', function () {
         gl.uniformMatrix4fv(uniLocation[0], false, mvpMatrix);
         gl.uniformMatrix4fv(uniLocation[1], false, mMatrix);
         gl.uniformMatrix4fv(uniLocation[2], false, invMatrix);
-        gl.uniform3fv(uniLocation[3], lightPosition);
-        gl.uniform3fv(uniLocation[4], eyeDirection);
-        gl.uniform4fv(uniLocation[5], ambientColor);
+        gl.uniform3fv(uniLocation[3], lightPosition1);
+        gl.uniform3fv(uniLocation[4], lightPosition2);
+        gl.uniform3fv(uniLocation[5], eyeDirection);
+        gl.uniform4fv(uniLocation[6], ambientColor);
         gl.drawElements(gl.TRIANGLES, torusData.index.length, gl.UNSIGNED_SHORT, 0);
 
         // トーラスのVBOとIBOをセット
@@ -320,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const rz = rr * Math.sin(tr);       // その中心を原点とした時の、頂点Aの座標に一致するからこの計算で良い。
                 if(color)
                 {
-                    const tc = color;
+                    var tc = color;
                 }
                 else
                 {
@@ -364,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // 縞模様の球体を自作
-    function stripedShpere(radius, frequency, roundness)
+    function stripedSphere(radius, frequency, roundness)
     {
         const pos = new Array();
         const nor = new Array();
@@ -403,19 +406,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 球体を生成する関数
     function sphere(row, column, rad, color){
-        var pos = new Array(), nor = new Array(),
+        let pos = new Array(), nor = new Array(),
             col = new Array(), idx = new Array();
-        for(var i = 0; i <= row; i++){
-            var r = Math.PI / row * i;
-            var ry = Math.cos(r);
-            var rr = Math.sin(r);
-            for(var ii = 0; ii <= column; ii++){
-                var tr = Math.PI * 2 / column * ii;
-                var tx = rr * rad * Math.cos(tr);
-                var ty = ry * rad;
-                var tz = rr * rad * Math.sin(tr);
-                var rx = rr * Math.cos(tr);
-                var rz = rr * Math.sin(tr);
+        for(let i = 0; i <= row; i++){
+            const r = Math.PI / row * i;
+            const ry = Math.cos(r);
+            const rr = Math.sin(r);
+            for(let ii = 0; ii <= column; ii++){
+                const tr = Math.PI * 2 / column * ii;
+                const tx = rr * rad * Math.cos(tr);
+                const ty = ry * rad;
+                const tz = rr * rad * Math.sin(tr);
+                const rx = rr * Math.cos(tr);
+                const rz = rr * Math.sin(tr);
                 if(color){
                     var tc = color;
                 }else{
