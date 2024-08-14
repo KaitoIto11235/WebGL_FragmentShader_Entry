@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     const torusData = torus(32, 32, 1.0, 5.0);
     //const stripedSphereData = stripedSphere(2, 51, 20);
-    const sphereData = sphere(64, 64, 2.0, [0.25, 0.25, 0.75, 1.0]);
+    const sphereData = sphere(64, 64, 2.0, [0.5, 0.0, 0.5, 0.2]);
 
     // VBOの生成
     const tPosition_vbo = create_vbo(torusData.position);
@@ -93,8 +93,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // 平行光源の向き
     const lightDirection = [-0.5, 0.5, 0.5];
     // 点光源の位置
-    const lightPosition1 = [5.0, 5.0, 2.0];
-    const lightPosition2 = [-8.0, 0.0, 9.0];
+    //const lightPosition1 = [5.0, 5.0, 2.0];
+    //const lightPosition2 = [-8.0, 0.0, 9.0];
     // 視線ベクトル
     const eyeDirection = [0.0, 0.0, 20.0];
     // 乱反射によって空間全てを少しだけ照らす環境光
@@ -122,9 +122,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // カウンタを元にラジアンと各種座標を算出
         const rad = (count % 360) * Math.PI / 180;
-        const tx = Math.cos(rad) * 3.5;
-        const ty = Math.sin(rad) * 3.5;
-        const tz = Math.sin(rad) * 3.5;
+        const tx = Math.cos(rad) * 5;
+        const ty = Math.sin(rad) * 5;
+        const tz = Math.sin(rad) * 5;
+
+        const lightPosition1 = [tx, -ty, -tz];
+        const lightPosition2 = [-tx, ty, tz];
 
         // トーラスのVBOとIBOをセット
         set_attribute(tVBOList, attLocation, attStride);

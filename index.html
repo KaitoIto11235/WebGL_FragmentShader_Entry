@@ -53,10 +53,11 @@
         vec3  invEye    = normalize(invMatrix * vec4(eyeDirection, 0.0)).xyz;
         vec3  halfLE1    = normalize(invLight1 + invEye);
         vec3  halfLE2    = normalize(invLight2 + invEye);
-        float diffuse   = clamp(dot(vNormal, invLight1) + dot(vNormal, invLight2), 0.0, 1.0);
+        float diffuse1   = clamp(dot(vNormal, invLight1), 0.0, 0.7);
+        float diffuse2   = clamp(dot(vNormal, invLight2), 0.0, 0.7);
         float specular1  = pow(clamp(dot(vNormal, halfLE1), 0.0, 1.0), 100.0);
         float specular2  = pow(clamp(dot(vNormal, halfLE2), 0.0, 1.0), 100.0);
-        vec4  destColor = vColor * vec4(vec3(diffuse), 1.0) + vec4(vec3(specular1), 1.0) + vec4(vec3(specular2), 1.0) + ambientColor;
+        vec4  destColor = vColor * (vec4(vec3(diffuse1), 1.0) + vec4(vec3(diffuse2), 1.0))+ vec4(vec3(specular1), 1.0) + vec4(vec3(specular2), 1.0) + ambientColor;
         gl_FragColor    = destColor;
       }
     </script>
